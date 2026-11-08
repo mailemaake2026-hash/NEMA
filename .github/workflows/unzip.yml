@@ -1,33 +1,43 @@
-name: Unzip NEMA Website
+name: Deploy NEMA Website
 
 on:
+  push:
+    branches:
+      - main
+
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
-  unzip:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Prepare website
+        run: |
+          test -f nema_github_pages/index.html
+          echo "NEMA website found!"
+
+      - name: Upload website
+        uses: actions/upload-pages-artifact@v3
         with:
-          persist-credentials: true
+          path: nema_github_pages
 
-      - name: Unzip website
-        run: |
-          unzip -o NEMA_EVENTS_Immersive.zip -d .
-
-      - name: Commit extracted files
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git add .
-          git commit -m "Extract NEMA website files" || echo "No changes"
-
-      - name: Push changes
-        run: |
-          git push
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
